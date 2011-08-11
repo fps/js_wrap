@@ -5,6 +5,7 @@
 #include <cstdlib>
 
 #include <signal.h>
+#include <unistd.h>
 
 #include <jack/jack.h>
 #include <jack/session.h>
@@ -63,7 +64,6 @@ namespace po = boost::program_options;
 po::options_description desc("Allowed options");
 
 jack_client_t *jack_client = 0;
-std::string lash_client_name = "Lash-Wrap";
 
 int shutdown_timeout = 5;
 
@@ -148,7 +148,14 @@ int main (int argc, char *argv[])
 	if (!jack_client) exit(EXIT_FAILURE);
 	
 	jack_set_session_callback(jack_client, ::session_callback, 0);
-
+	jack_activate(jack_client);
+	std::stringstream stream;
+	for (int i = argc+1; i < old_argc; ++i) {
+		stream << argv[i] << " ";
+	}
+	command_line = stream.str();
+	
+	//std::cout << "cmd: " << command_line << std::endl;
 	// Ok, let's try to spawn the app
 	GPid child_id;
 	GError *error;
@@ -164,7 +171,63 @@ int main (int argc, char *argv[])
 	while (!quit)
 	{
 		if (got_jack_session_event) {
+			handle_jack_session_event();
 		}
+		usleep(10000);
+	}
+	
+	kill (child_id, SIGTERM);
+	for (int i = 0; i < shutdown_timeout; ++i)
+	{
+		std::cout << "[JS-Wrap]: Waiting for child process... " << shutdown_timeout - i << std::endl;
+		int status;
+		int ret = waitpid (child_id, &status, WNOHANG);
+		if (ret == child_id)
+		{
+			if (WIFEXITED(status) || WIFSIGNALED(status) || WCOREDUMP(status))
+			{
+				std::cout << "[JS-Wrap]: Child exited gracefully. Exiting..." << std::endl;
+				exit(EXIT_SUCCESS);
+			}
+		}
+		if (ret == -1)
+		{
+			std::cout << "[JS-Wrap]: waitpid() returned error code. Exiting..." << std::endl;
+			exit(EXIT_FAILURE);
+		}
+		sleep(1);
+	}
+
+	// Ok, time to kill the app process as LASH told us to. send evil KILL signal
+	std::cout << "[JS-Wrap]: Sending child process the KILL signal..." << std::endl;
+	kill (child_id, SIGKILL);
+
+	quit = false;
+
+	while (!quit)
+	{
+		std::cout << "[JS-Wrap]: Waiting for child process..." << std::endl;
+		int status;
+		int ret = waitpid (child_id, &status, WNOHANG);
+
+		// TODO better error handling
+		if (ret == -1)
+		{
+			std::cout << "[JS-Wrap]: waitpid() returned error. Bye.." << std::endl;
+			exit (EXIT_SUCCESS);
+		}
+
+		if (ret == child_id)
+		{
+			if (WIFEXITED(status) || WIFSIGNALED(status) ||WCOREDUMP(status))
+			{
+				// process finished, so we leave too.
+				// TODO: handle segfaults and other signals
+				std::cout << "[JS-Wrap]: Exiting, because the app exited (on signal SIGKILL). Bye.." << std::endl;
+				exit (EXIT_SUCCESS);
+			}
+		}
+		sleep (1);
 	}
 	
 	jack_client_close(jack_client);
