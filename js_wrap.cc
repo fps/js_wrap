@@ -115,7 +115,7 @@ int main (int argc, char *argv[])
 
 	desc.add_options()
 		("help,h", "produce this help message")
-      ("version,v", "show version")
+		("version,v", "show version")
 		("shutdown-timeout,s", po::value<int>(&shutdown_timeout), "Set the timeout time in seconds until js_wrap gives up waiting for the guest process to stop. First it is sent a SIGTERM, then the shutdown-timeout time is waited, then a SIGKILL is sent (default 5(s)).")
 		("UUID,U", po::value<std::string>(&uuid), "jack session UUID")
 		;
@@ -174,6 +174,25 @@ int main (int argc, char *argv[])
 			handle_jack_session_event();
 		}
 		usleep(10000);
+		
+		int status;
+		pid_t ret;
+		ret = waitpid (child_id, &status, WNOHANG);
+		if (ret == child_id)
+		{
+			if (WIFEXITED(status) || WIFSIGNALED(status) || WCOREDUMP(status))
+			{
+				// process finished, so we leave too.
+				// TODO: handle segfaults and other signals
+				std::cout << "[Lash-Wrap]: Exiting, because the app exited. Bye.." << std::endl;
+
+				// close connected clients before exiting
+				if (jack_client)
+					jack_client_close(jack_client);
+
+				exit (EXIT_SUCCESS);
+			}
+		}
 	}
 	
 	kill (child_id, SIGTERM);
