@@ -86,6 +86,7 @@ void handle_jack_session_event() {
 	}
 	
 	jack_session_event_free( ev );
+	got_jack_session_event = false;
 }
 
 
@@ -175,6 +176,7 @@ int main (int argc, char *argv[])
 		}
 		usleep(10000);
 		
+		//std::cout << "wait" << std::endl;
 		int status;
 		pid_t ret;
 		ret = waitpid (child_id, &status, WNOHANG);
@@ -184,13 +186,16 @@ int main (int argc, char *argv[])
 			{
 				// process finished, so we leave too.
 				// TODO: handle segfaults and other signals
-				std::cout << "[Lash-Wrap]: Exiting, because the app exited. Bye.." << std::endl;
+				std::cout << "[JS-Wrap]: Exiting, because the app exited. Bye.." << std::endl;
 
 				// close connected clients before exiting
 				if (jack_client)
 					jack_client_close(jack_client);
 
 				exit (EXIT_SUCCESS);
+			}
+			else {
+				std::cout << "fishy" << std::endl;
 			}
 		}
 	}
