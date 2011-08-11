@@ -6,6 +6,7 @@
 
 #include <signal.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <jack/jack.h>
 #include <jack/session.h>
@@ -164,11 +165,11 @@ int main (int argc, char *argv[])
 	{
 		std::cout << "[JS-Wrap]: Error: Failed to spawn process" << std::endl;
 
-		if (jack_client)
-			jack_client_close(jack_client);
+		jack_client_close(jack_client);
 
 		exit (EXIT_FAILURE);
 	}
+	
 	while (!quit)
 	{
 		if (got_jack_session_event) {
@@ -180,9 +181,10 @@ int main (int argc, char *argv[])
 		int status;
 		pid_t ret;
 		ret = waitpid (child_id, &status, WNOHANG);
+		//std::cout << ret << std::endl;
 		if (ret == child_id)
 		{
-			if (WIFEXITED(status) || WIFSIGNALED(status) || WCOREDUMP(status))
+			if (WIFEXITED(status) || WEXITSTATUS(status) || WIFSIGNALED(status) || WCOREDUMP(status))
 			{
 				// process finished, so we leave too.
 				// TODO: handle segfaults and other signals
@@ -194,9 +196,10 @@ int main (int argc, char *argv[])
 
 				exit (EXIT_SUCCESS);
 			}
-			else {
-				std::cout << "fishy" << std::endl;
-			}
+		}
+		if (ret == -1 && errno == ECHILD) {
+			jack_client_close(jack_client);
+			exit (EXIT_SUCCESS);
 		}
 	}
 	
@@ -205,7 +208,7 @@ int main (int argc, char *argv[])
 	{
 		std::cout << "[JS-Wrap]: Waiting for child process... " << shutdown_timeout - i << std::endl;
 		int status;
-		int ret = waitpid (child_id, &status, WNOHANG);
+		pid_t ret = waitpid (child_id, &status, WNOHANG);
 		if (ret == child_id)
 		{
 			if (WIFEXITED(status) || WIFSIGNALED(status) || WCOREDUMP(status))
@@ -232,7 +235,7 @@ int main (int argc, char *argv[])
 	{
 		std::cout << "[JS-Wrap]: Waiting for child process..." << std::endl;
 		int status;
-		int ret = waitpid (child_id, &status, WNOHANG);
+		pid_t ret = waitpid (child_id, &status, WNOHANG);
 
 		// TODO better error handling
 		if (ret == -1)
