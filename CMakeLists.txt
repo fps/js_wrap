@@ -15,9 +15,9 @@ find_package(Boost COMPONENTS program_options)
 
 add_executable(js_wrap js_wrap.cc)
 
-pkg_check_modules(JS_WRAP jack)
-target_link_libraries(js_wrap jack ${Boost_PROGRAM_OPTIONS_LIBRARY})
-include_directories(${JASS_INCLUDE_DIRS})
+pkg_check_modules(JS_WRAP jack glib-2.0)
+target_link_libraries(js_wrap jack glib-2.0 ${Boost_PROGRAM_OPTIONS_LIBRARY})
+include_directories(${JS_WRAP_INCLUDE_DIRS})
 
 install(TARGETS js_wrap RUNTIME DESTINATION bin)
 
