@@ -1,0 +1,31 @@
+js_wrap - a simple jack_session wrapper for non-js-enabled apps
+
+The basic usage is e.g.
+
+js_wrap -- gnome-terminal
+
+Then save your jack session using e.g. qjackctl's session 
+management facilities. When you restore the session lateron
+gnome-terminal should get started automatically and it 
+should also automatically close when you quit the session.
+
+REQUIREMENTS:
+
+glib-2.0
+libjack
+boost::program_options
+
+INSTALLATION:
+
+mkdir bld
+cd bld
+cmake ..
+cd ..
+make -C bld
+sudo make install
+
+AUTHOR:
+
+Florian Paul Schmidt (mista.tapas@gmx.net)
+
+
