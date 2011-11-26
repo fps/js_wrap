@@ -22,7 +22,7 @@ cd bld
 cmake ..
 cd ..
 make -C bld
-sudo make install
+sudo make -C bld install
 
 AUTHOR:
 
